@@ -158,30 +158,46 @@ The **Mvc.Server sample comes with an [`AuthorizationController` that supports b
             .AddValidation();
     }
     ```
-
-  - **Register your client application**:
+    
+      - **Register your client application**:
 
     ```csharp
-    // Create a new service scope to ensure the database context
-    // is correctly disposed when this methods returns.
-    using (var scope = app.ApplicationServices.CreateScope())
+    public void Configure(IApplicationBuilder app)
     {
-        var provider = scope.ServiceProvider;
-        var context = provider.GetRequiredService<ApplicationDbContext>();
-        await context.Database.EnsureCreatedAsync();
+        app.UseAuthentication();
 
-        var manager = provider.GetRequiredService<IOpenIddictApplicationManager>();
+        app.UseMvc();
+        
+        InitializeAsync(app, CancellationToken.None).GetAwaiter().GetResult();
+    }
+    ```
 
-        if (await manager.FindByClientIdAsync("[client identifier]") == null)
+  - **Method for registering your client application**:
+
+    ```csharp
+    private async Task InitializeAsync(IApplicationBuilder app, CancellationToken cancellationToken)
+    {
+        // Create a new service scope to ensure the database context
+        // is correctly disposed when this methods returns.
+        using (var scope = app.ApplicationServices.CreateScope())
         {
-            var descriptor = new OpenIddictApplicationDescriptor
-            {
-                ClientId = "[client identifier]",
-                ClientSecret = "[client secret]",
-                RedirectUris = { new Uri("[redirect uri]") }
-            };
+            var provider = scope.ServiceProvider;
+            var context = provider.GetRequiredService<ApplicationDbContext>();
+            await context.Database.EnsureCreatedAsync();
 
-            await manager.CreateAsync(descriptor);
+            var manager = provider.GetRequiredService<IOpenIddictApplicationManager>();
+
+            if (await manager.FindByClientIdAsync("[client identifier]") == null)
+            {
+                var descriptor = new OpenIddictApplicationDescriptor
+                {
+                    ClientId = "[client identifier]",
+                    ClientSecret = "[client secret]",
+                    RedirectUris = { new Uri("[redirect uri]") }
+                };
+
+                await manager.CreateAsync(descriptor, cancellationToken);
+            }
         }
     }
     ```
